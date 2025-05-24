@@ -1,13 +1,17 @@
-pip install Flask Flask-OAuthlib Flask-SQLAlchemy requests
-
 import os
 import time
-from flask import Flask, redirect, url_for, request, session, jsonify
+from flask import Flask, redirect, url_for, request, session, jsonify, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 from flask_oauthlib.client import OAuth
+from flask_wtf import FlaskForm, CSRFProtect
+from wtforms import RadioField, SubmitField
 
+# Initialize Flask app
 app = Flask(__name__)
 app.secret_key = "random_secret_key"
+
+# CSRF Protection
+csrf = CSRFProtect(app)
 
 # Google OAuth Configuration
 app.config["GOOGLE_CLIENT_ID"] = "YOUR_GOOGLE_CLIENT_ID"
@@ -34,6 +38,15 @@ class Vote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     candidate = db.Column(db.String(50), nullable=False)
+
+# Flask-WTF form for voting with CSRF
+class VoteForm(FlaskForm):
+    candidate = RadioField(
+        "Select Candidate",
+        choices=[("Candidate A", "Candidate A"), ("Candidate B", "Candidate B")],
+        default="Candidate A"
+    )
+    submit = SubmitField("Submit Vote")
 
 # Voting Window (Adjust as needed)
 VOTING_START_TIME = time.time()
@@ -76,8 +89,9 @@ def vote():
     if time.time() > VOTING_START_TIME + VOTING_DURATION:
         return "Voting has ended."
 
-    if request.method == "POST":
-        candidate = request.form.get("candidate")
+    form = VoteForm()
+    if form.validate_on_submit():
+        candidate = form.candidate.data
         email = session["email"]
 
         existing_vote = Vote.query.filter_by(email=email).first()
@@ -90,14 +104,17 @@ def vote():
 
         return "Vote submitted successfully!"
 
-    return """
-    <form method="post">
-        <label>Select Candidate:</label><br>
-        <input type="radio" name="candidate" value="Candidate A"> Candidate A<br>
-        <input type="radio" name="candidate" value="Candidate B"> Candidate B<br>
-        <button type="submit">Submit Vote</button>
-    </form>
-    """
+    # Render the voting form with CSRF protection
+    return render_template_string('''
+        <form method="post">
+            {{ form.hidden_tag() }}
+            {{ form.candidate.label }}<br>
+            {% for subfield in form.candidate %}
+                {{ subfield() }} {{ subfield.label }}<br>
+            {% endfor %}
+            {{ form.submit() }}
+        </form>
+    ''', form=form)
 
 @app.route("/results")
 def results():
