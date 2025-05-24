@@ -12,6 +12,13 @@
                 <input class="form-check-input" type="radio" name="candidate" value="Candidate A">
                 <label class="form-check-label">Candidate A</label>
             </div>
+            <form method="POST">
+    {{ csrf_token() }}
+    <label>Select Candidate:</label><br>
+    <input type="radio" name="candidate" value="Candidate A"> Candidate A<br>
+    <input type="radio" name="candidate" value="Candidate B"> Candidate B<br>
+    <button type="submit">Submit Vote</button>
+</form>
             <div class="form-check">
                 <input class="form-check-input" type="radio" name="candidate" value="Candidate B">
                 <label class="form-check-label">Candidate B</label>
